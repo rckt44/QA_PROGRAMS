@@ -1,0 +1,64 @@
+
+/*pgm:qa Program*/
+/*disc:compare  month to month*/
+/*===================================================================================
+								CREATE
+=====================================================================================*/
+%MACRO hitit(in,out,out2);
+proc sql;
+create table &out as 
+	select a.* from &in..datasetname a
+	inner join 
+	cs.c_and_s_plans_temp b
+	on
+	a.HCFA_Contract_Number=b.Plan
+	and 
+	a.pbp_id=b.pbp;
+quit;
+
+proc sql;
+create table &out._dist_hic_cnt as 
+select count(distinct hic_num) as total from &Out.;
+quit;
+
+
+proc means SUM data=&out(drop=disenroll_date pnl_nbr)
+	stackodsoutput nway maxdec=0;
+		class source;
+		var _numeric_;
+		*where source='AC';
+	ods output summary=&out2.(rename=(sum=&out._Total_Hcc)drop=NObs _control_);
+RUN;
+proc sort data= &out2.;by source Variable ;run;
+%mend hitit;
+%hitit(Feb,FEB,dataset_Feb);
+%hitit(Staging,MARCH,dataset_MARCH);
+
+/*===================================================================================
+								COMPARE
+=====================================================================================*/
+Data Compare_Feb_and_March;
+	Merge dataset_summary_2017_Feb dataset_summary_2017_March;
+	by source Variable;
+	Diff=Feb_Total_Hcc-March_Total_Hcc;
+	format diff 8.;
+run;
+
+/*===================================================================================
+								 EXPORT
+=====================================================================================*/
+
+ods excel file="T:\user\qa_filename_dip.xlsx" style=seasideprinter
+options(sheet_interval="NONE" sheet_name="Compare_Feb_March" );
+/**/
+	proc print data=Compare_Feb_and_March noobs;
+		var Source Variable Feb_Total_Hcc March_Total_Hcc Diff;
+		sum Feb_Total_Hcc March_Total_Hcc Diff ;
+		format Feb_Total_Hcc March_Total_Hcc Diff  comma12.0;
+	run;
+/**/
+ods excel close;
+ods listing;
+
+
+/*==============================END=====================================*/
