@@ -1,0 +1,15 @@
+
+/*Add last characters*/
+data test.test(rename = (newgrp = group_number));
+	set test.test ;
+	format newgrp $ 36.;
+	newgrp=compress(cats(group_number,'_102'),,'kw');
+	drop group_number;
+run;
+
+
+/*remove last characters*/
+data test.test;
+   set test.test;
+   newname=substr(system_group, 1, length(system_group)-4);
+run;
